@@ -1,8 +1,5 @@
-
 #ARGV[0]    Input file DIR;
-#execute    perl [program] [Input DIR] ["Delete_content"] 
-#for example perl delete_content.pl ./ "task int_satam\;.*endtask"
-#it will delete the content like that :
+#execute    perl [program] [Input DIR] ["Delete_content"] ["Delete_content"] ["Delete_content"] ......
 
 
 
@@ -26,9 +23,22 @@ my $file_out;
 my $file_out_handle;
 my $fail_cnt = 0;
 my $success_cnt = 0;
+my $mod_cnt=0;
+my $unmod_cnt=0;
 my @fail_files;
 my @success_files;
-my $delete_something = qr/$ARGV[1]/s;
+my @delete_something = @ARGV;
+
+#//------------------------------
+#//Filter the input argument 
+##//------------------------------
+
+print "==========The content to be delete==========\n";
+for(my $i=1;$i<@delete_something;$i=$i+1){
+        print $ARGV[$i]."\n";
+}
+print "==========The content to be delete==========\n";
+#//------------------------------
 
 
 mkdir($out_dir) unless(-d $out_dir); #create outout files dir;
@@ -53,44 +63,61 @@ foreach $file (readdir $dir_handle){
     my $fullstring = do{local $/;<$file_handle>};       ###### Read Full File into String
     
     open $file_handle,'<',$file or die "can not open $file :$!\n";
-    if ($fullstring =~ m/$delete_something/){
+    #//------------------------------
+    #//Compare the input content and do something
+    #//------------------------------
+    for(my $i=1;$i<@delete_something;$i=$i+1){
+            print "==========CHECK THE CONTENT==========\n";
+            print $delete_something[$i]."\n";
+        if ($fullstring =~ m/$delete_something[$i]/){
             print "Find same content in: ".$file."\n";
-            $success_cnt++;
-            push(@success_files,$file);
-            $fullstring =~ s/$delete_something//g;
-            print $file_out_handle $fullstring;
-    }
-    else{
+            $fullstring =~ s/$delete_something[$i]//g;
+            $mod_cnt++;
+        }
+        else{
             print "No same content in: ".$file."\n";
-            $fail_cnt++;
-            push(@fail_files,$file);
-            while(<$file_handle>){
-                #print $file_out_handle "it prints something\n";
-                print $file_out_handle $_;
-            }
+            $unmod_cnt++;
+        }
     }
+    print $file_out_handle $fullstring;
 
     close $file_out_handle;
+    if($unmod_cnt==0){
+        $fail_cnt++;
+        push(@fail_files,$file);
+    }
+    else{
+        $success_cnt++;
+        push(@success_files,$file);
+    }
+
 }
+    #//------------------------------
+    #//Compare the input content and do something
+    #//------------------------------
 
     open $log_fh, '>', "$log_file" or die " can not open $log_file :$!\n";
 
     #show log
     if ($verbose){
-    print "List of succesful files: \n";
-    print $log_fh "List of process files: \n";
-    print"=====================================\n";
-    print $log_fh "Totaly ".$success_cnt." files\n";
-    print "@success_files","\n";
-    print $log_fh "@success_files"."\n";
-    print"=====================================\n";
-    print "list of unprocess files: \n";
-    print"=====================================\n";
-    print $log_fh "List of unprocess files: \n";
-    print $log_fh "Totaly ".$fail_cnt." files\n";
-    print "@fail_files","\n";
-    print $log_fh "@fail_files"."\n";
-    print"=====================================\n";
+        print"=====================================\n";
+        print "List of process files: \n";
+        print $log_fh "List of process files: \n";
+        print $log_fh "Totaly ".$success_cnt." files\n";
+        print join "\n",@success_files;
+        print "\n";
+        print $log_fh join "\n",@success_files;
+        print $log_fh "\n";
+        print $log_fh "=====================================\n";
+        print"=====================================\n";
+        print "list of unprocess files: \n";
+        print $log_fh "List of unprocess files: \n";
+        print $log_fh "Totaly ".$fail_cnt." files\n";
+        print join "\n",@fail_files;
+        print "\n";
+        print $log_fh join "\n",@fail_files;
+        print $log_fh "\n";
+        print"=====================================\n";
     }
     print "process $success_cnt files\n";
     print "unrocess $fail_cnt files\n";
