@@ -1,5 +1,29 @@
 #ARGV[0]    Input file DIR;
-#execute    perl [program] [Input DIR] ["Delete_content"] ["Delete_content"] ["Delete_content"] ......
+#execute    perl [program] [Input DIR] ["Delete_content"] 
+#for example perl delete_content.pl ./ "task int_satam\;.*endtask"
+#it will delete the content like that :
+#
+#task int_satam;
+#begin
+#  //$display($time, " JR0325A INT : Enter SATA Model Interrupt Service Routine");
+#    fork
+#        if(sim.satam0.int_rxfis_h2dreg)
+#        begin
+#            sim.satam0.int_rxfis_h2dreg = 0;
+#            sim.satam0.get_rxmem_h2dreg;
+#            sim.satam0.cmd_dispatch;
+#        end
+#        .
+#        .
+#        .
+#        if(sim.satam5.int_rxfis_data)
+#        begin
+#            sim.satam5.int_rxfis_data = 0;
+#            -> sim.satam5.event_rxfis_data;
+#        end
+#    join
+#end
+#endtask
 
 
 
@@ -23,22 +47,9 @@ my $file_out;
 my $file_out_handle;
 my $fail_cnt = 0;
 my $success_cnt = 0;
-my $mod_cnt=0;
-my $unmod_cnt=0;
 my @fail_files;
 my @success_files;
-my @delete_something = @ARGV;
-
-#//------------------------------
-#//Filter the input argument 
-##//------------------------------
-
-print "==========The content to be delete==========\n";
-for(my $i=1;$i<@delete_something;$i=$i+1){
-        print $ARGV[$i]."\n";
-}
-print "==========The content to be delete==========\n";
-#//------------------------------
+my $delete_something = qr/$ARGV[1]/s;
 
 
 mkdir($out_dir) unless(-d $out_dir); #create outout files dir;
@@ -55,6 +66,8 @@ foreach $file (readdir $dir_handle){
     #next if($file =~ /^\.\.$/);            #process all folder except ..
     next if($file =~ /^[.]/);               #skip with .
     next if($file =~ /new/);
+    next if($file =~ /.sh$/);
+    next if($file =~ /.log$/);
     open $file_handle,'<',$file or die " can not open $file : $!\n";
     $file_out = "$file";                #Output file name with suffix .new
     open $file_out_handle, '>', "$out_dir/$file_out" or die " can not open $file_out :$!\n";
@@ -63,38 +76,28 @@ foreach $file (readdir $dir_handle){
     my $fullstring = do{local $/;<$file_handle>};       ###### Read Full File into String
     
     open $file_handle,'<',$file or die "can not open $file :$!\n";
-    #//------------------------------
-    #//Compare the input content and do something
-    #//------------------------------
-    for(my $i=1;$i<@delete_something;$i=$i+1){
-            print "==========CHECK THE CONTENT==========\n";
-            print $delete_something[$i]."\n";
-        if ($fullstring =~ m/$delete_something[$i]/){
+    if ($fullstring =~ m/$delete_something/){
             print "Find same content in: ".$file."\n";
-            $fullstring =~ s/$delete_something[$i]//g;
-            $mod_cnt++;
-        }
-        else{
-            print "No same content in: ".$file."\n";
-            $unmod_cnt++;
-        }
-    }
-    print $file_out_handle $fullstring;
-
-    close $file_out_handle;
-    if($unmod_cnt==0){
-        $fail_cnt++;
-        push(@fail_files,$file);
+            print "===============The matched content is :===============\n";
+            print "Found: \n$&\n";                        ##### Print matched Content #####
+            print "===============^^^^^^^^^^^^^^^^^^^^^^^^===============\n";
+            $success_cnt++;
+            push(@success_files,$file);
+            $fullstring =~ s/$delete_something//g;
+            print $file_out_handle $fullstring;
     }
     else{
-        $success_cnt++;
-        push(@success_files,$file);
+            print "No same content in: ".$file."\n";
+            $fail_cnt++;
+            push(@fail_files,$file);
+            while(<$file_handle>){
+                #print $file_out_handle "it prints something\n";
+                print $file_out_handle $_;
+            }
     }
 
+    close $file_out_handle;
 }
-    #//------------------------------
-    #//Compare the input content and do something
-    #//------------------------------
 
     open $log_fh, '>', "$log_file" or die " can not open $log_file :$!\n";
 
